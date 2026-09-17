@@ -12,6 +12,7 @@
     }
   ],
   "vars": {
-    "AGILIZE_NOTIFICATION_EMAIL": "agilizecertificadora@gmail.com"
+    "AGILIZE_NOTIFICATION_EMAIL": "agilizecertificadora@gmail.com",
+    "ADMIN_EMAIL": "agilizecertificadora@gmail.com"
   }
 }

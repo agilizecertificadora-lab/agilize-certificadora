@@ -20,7 +20,8 @@ http.createServer(async (req, res) => {
       const protocol=`AGZ-${new Date().toISOString().slice(0,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,6).toUpperCase()}`;
       json(res,201,{protocol,status:'local_preview'});return;
     }
-    const path = resolve(root, '.' + (pathname === '/' ? '/index.html' : pathname));
+    const publicPath = pathname === '/' ? '/index.html' : pathname.endsWith('/') ? `${pathname}index.html` : pathname;
+    const path = resolve(root, '.' + publicPath);
     if (!path.startsWith(resolve(root) + sep)) { res.writeHead(403).end(); return; }
     const content = await readFile(path);
     res.writeHead(200, { 'Content-Type': mime[extname(path)] || 'application/octet-stream', 'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff' }); res.end(content);
