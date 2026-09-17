@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "agilizecertificadora",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-09-17",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "agilize-pedidos",
+      "database_id": "78985742-9d7d-4d5f-998f-764b7f55a6bc",
+      "migrations_dir": "./migrations"
+    }
+  ],
+  "vars": {
+    "AGILIZE_NOTIFICATION_EMAIL": "agilizecertificadora@gmail.com"
+  }
+}

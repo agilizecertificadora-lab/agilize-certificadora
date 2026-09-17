@@ -4,6 +4,8 @@ node_modules/
 !.env.example
 .write-check
 .sites-runtime/
+.wrangler-agilize/
+.wrangler/
 *.pdf
 docs/
 src/domain/

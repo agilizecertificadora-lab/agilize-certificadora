@@ -7,6 +7,7 @@ const localDate = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(
 form.elements.date.min = localDate;
 form.elements.birth.max = localDate;
 let current = 0;
+let reviewedPayload = null;
 function selectedProduct(){ return AGILIZE_CATALOG.find(item=>item.id===certificate.value); }
 function populateProducts(preferred){
  const items=AGILIZE_CATALOG.filter(item=>item.person===person.value && item.publishable!==false);
@@ -38,12 +39,28 @@ function showStep(index) {
   steps.forEach((section,i)=>{section.hidden=i!==index;});
   document.querySelectorAll('.progress li').forEach((item,i)=>{if(i===index)item.setAttribute('aria-current','step');else item.removeAttribute('aria-current');});
   document.querySelector('#back').hidden=index===0;
-  document.querySelector('#next').textContent=index===2?'Revisar simulação →':'Continuar →';
+  document.querySelector('#next').textContent=index===2?'Revisar pedido →':'Continuar →';
   document.querySelector('#form-error').textContent='';
   steps[index].querySelector('h2').focus();
 }
 person.addEventListener('change',configure);
 certificate.addEventListener('change',configure);
+async function loadAvailability(){
+  const date=form.elements.date.value; const time=form.elements.time; const note=document.querySelector('#availability-note');
+  time.disabled=true; time.replaceChildren(new Option(date?'Consultando horários…':'Escolha primeiro uma data',''));
+  if(!date)return;
+  try{
+    const response=await fetch(`/api/availability?date=${encodeURIComponent(date)}&mode=${encodeURIComponent(form.elements.mode.value)}`);
+    if(!response.ok)throw new Error('availability');
+    const result=await response.json(); time.replaceChildren(new Option('Escolha um horário',''));
+    result.slots.forEach(slot=>time.add(new Option(slot,slot))); time.disabled=!result.slots.length;
+    note.textContent=result.slots.length?'Escolha um horário. A Agilize fará a confirmação final do atendimento.':'Não há horários disponíveis nessa data. Escolha outro dia.';
+  }catch{
+    time.replaceChildren(new Option('Horários temporariamente indisponíveis','')); note.textContent='Não foi possível consultar a agenda agora. Tente novamente ou fale com a Agilize pelo WhatsApp.';
+  }
+}
+form.elements.date.addEventListener('change',loadAvailability);
+form.elements.mode.addEventListener('change',loadAvailability);
 const product = new URLSearchParams(location.search).get('produto');
 const chosen=AGILIZE_CATALOG.find(item=>item.id===product && item.person!=='syn' && item.publishable!==false);
 if(chosen)person.value=chosen.person;
@@ -71,6 +88,8 @@ form.addEventListener('submit',event=>{
   if(current<2){showStep(current+1);return;}
   for(let i=0;i<3;i++)if(!validateStep(i))return;
   const data=new FormData(form);
+  reviewedPayload=Object.fromEntries(data.entries());
+  reviewedPayload.product={id:selectedProduct().id,title:selectedProduct().title,priceCents:selectedProduct().priceCents,validity:selectedProduct().validity,plusIncluded:selectedProduct().plusIncluded};
   const list=document.querySelector('#review-list');list.replaceChildren();
   const add=(label,value)=>{const row=document.createElement('div');const term=document.createElement('dt');const desc=document.createElement('dd');term.textContent=label;desc.textContent=value;row.append(term,desc);list.append(row);};
   add('Certificado',document.querySelector('#summary-product').textContent);
@@ -84,6 +103,13 @@ form.addEventListener('submit',event=>{
 });
 document.querySelector('#back').addEventListener('click',()=>showStep(Math.max(0,current-1)));
 document.querySelector('#edit').addEventListener('click',()=>{document.querySelector('#review').hidden=true;form.hidden=false;showStep(0);});
-document.querySelector('#clear').addEventListener('click',()=>{form.reset();document.querySelector('#review-list').replaceChildren();document.querySelector('#review').hidden=true;form.hidden=false;configure();showStep(0);});
-window.addEventListener('pageshow',event=>{if(event.persisted){form.reset();document.querySelector('#review-list').replaceChildren();document.querySelector('#review').hidden=true;form.hidden=false;configure();showStep(0);}});
+document.querySelector('#send-order').addEventListener('click',async()=>{
+  const button=document.querySelector('#send-order'); const status=document.querySelector('#submit-status'); button.disabled=true; status.textContent='Enviando seu pedido…';
+  try{
+    const response=await fetch('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(reviewedPayload)});
+    const result=await response.json(); if(!response.ok)throw new Error(result.message||'Não foi possível enviar o pedido.');
+    document.querySelector('#review').hidden=true; document.querySelector('#confirmation').hidden=false; document.querySelector('#protocol').textContent=result.protocol; document.querySelector('#confirmation h2').focus(); form.reset(); reviewedPayload=null;
+  }catch(error){status.textContent=error.message||'Não foi possível enviar agora. Tente novamente.'; button.disabled=false;}
+});
+window.addEventListener('pageshow',event=>{if(event.persisted){form.reset();document.querySelector('#review-list').replaceChildren();document.querySelector('#review').hidden=true;document.querySelector('#confirmation').hidden=true;form.hidden=false;configure();showStep(0);}});
 
