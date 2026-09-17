@@ -1,0 +1,3 @@
+import { cookieValue, hash } from './admin-auth.js';
+export function partnerCookie(token,maxAge=28800){return `agilize_partner=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`}
+export async function requirePartner(request,env){if(!env.DB||!env.ADMIN_SESSION_SECRET)return null;const token=cookieValue(request,'agilize_partner');if(!token)return null;const tokenHash=await hash(token,env.ADMIN_SESSION_SECRET);return await env.DB.prepare('SELECT id,email,expires_at FROM partner_sessions WHERE token_hash=? AND expires_at>? LIMIT 1').bind(tokenHash,new Date().toISOString()).first()||null}
