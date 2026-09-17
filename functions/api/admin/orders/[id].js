@@ -1,10 +1,14 @@
 import { clean, json, requireAdmin } from '../../../_lib/admin-auth.js';
+import { pixPayload, paymentTxid } from '../../../_lib/pix.js';
 const allowedStatuses = new Set(['pending_confirmation','confirmed','awaiting_documents','scheduled','issuance_sent','completed','cancelled','rejected']);
 const allowedPaymentStatuses = new Set(['pending','reported','confirmed','not_found','cancelled','refunded']);
 export async function onRequestGet({ request, env, params }) {
   if (!await requireAdmin(request, env)) return json({ message: 'Acesso não autorizado.' }, 401);
   const order = await env.DB.prepare('SELECT * FROM orders WHERE id=? LIMIT 1').bind(params.id).first(); if (!order) return json({ message: 'Pedido não encontrado.' }, 404);
-  try { order.address = JSON.parse(order.address_json || '{}'); } catch { order.address = {}; } delete order.address_json; return json({ order });
+  try { order.address = JSON.parse(order.address_json || '{}'); } catch { order.address = {}; } delete order.address_json;
+  const amount=order.payment_amount_cents??order.price_cents; const settings=await env.DB.prepare('SELECT pix_key,merchant_name,merchant_city FROM payment_settings WHERE id=?').bind('default').first();
+  if(Number.isInteger(amount)&&settings){const txid=order.payment_txid||paymentTxid(order.protocol);order.payment_copy_paste=pixPayload({key:settings.pix_key,name:settings.merchant_name,city:settings.merchant_city,amountCents:amount,txid,description:`Pedido ${order.protocol}`});order.payment_display_amount=amount;order.payment_display_txid=txid;}
+  return json({ order });
 }
 export async function onRequestPatch({ request, env, params }) {
   if (!await requireAdmin(request, env)) return json({ message: 'Acesso não autorizado.' }, 401);
