@@ -31,5 +31,5 @@ export async function onRequestPatch({ request, env, params }) {
   }
   return json({ ok: true, notification, updatedAt: updated });
 }
-export async function onRequestDelete({ request, env, params }) { if (!await requireAdmin(request, env)) return json({ message: 'Acesso não autorizado.' }, 401); const result=await env.DB.prepare('DELETE FROM orders WHERE id=?').bind(params.id).run(); if (!result.meta?.changes) return json({ message: 'Pedido não encontrado.' }, 404); return json({ ok:true }); }
+export async function onRequestDelete({ request, env, params }) { if (!await requireAdmin(request, env)) return json({ message: 'Acesso não autorizado.' }, 401); const result=await env.DB.prepare("DELETE FROM orders WHERE id=? AND status IN ('cancelled','rejected')").bind(params.id).run(); if (!result.meta?.changes) return json({ message: 'Somente pedidos cancelados ou recusados podem ser excluídos.' }, 400); return json({ ok:true }); }
 function statusLabel(status) { return ({ pending_confirmation:'Aguardando confirmação', confirmed:'Confirmado', awaiting_documents:'Aguardando documentos', scheduled:'Videoconferência agendada', issuance_sent:'Pedido gerado e link enviado', completed:'Finalizado', cancelled:'Cancelado', rejected:'Recusado' })[status] || status; }

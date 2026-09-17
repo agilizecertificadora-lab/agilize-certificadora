@@ -69,6 +69,7 @@ populateProducts(chosen?.id);
 if(product==='Certificado A3')certificate.value=AGILIZE_CATALOG.find(item=>item.person===person.value&&item.type==='A3').id;
 configure();
 const digits = value=>value.replace(/\D/g,'');
+form.elements.cnpj.addEventListener('input',event=>{const n=digits(event.target.value).slice(0,14);event.target.value=n.replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2');});
 form.elements.cpf.addEventListener('input',event=>{const n=digits(event.target.value).slice(0,11);event.target.value=n.replace(/^(\d{3})(\d)/,'$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/,'$1.$2.$3').replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/,'$1.$2.$3-$4');});
 form.elements.zip.addEventListener('input',event=>{event.target.value=digits(event.target.value).slice(0,8).replace(/^(\d{5})(\d)/,'$1-$2');});
 form.elements.phone.addEventListener('input',event=>{const n=digits(event.target.value).slice(0,11);event.target.value=n.length>10?n.replace(/^(\d{2})(\d{5})(\d*)$/,'($1) $2-$3'):n.replace(/^(\d{2})(\d{4})(\d*)$/,'($1) $2-$3');});
