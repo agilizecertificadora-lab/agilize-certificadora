@@ -1,5 +1,6 @@
 import { clean, json, requireAdmin } from '../../../_lib/admin-auth.js';
 const allowedStatuses = new Set(['pending_confirmation','confirmed','awaiting_documents','scheduled','completed','cancelled','rejected']);
+const allowedPaymentStatuses = new Set(['pending','reported','confirmed','not_found','cancelled','refunded']);
 export async function onRequestGet({ request, env, params }) {
   if (!await requireAdmin(request, env)) return json({ message: 'Acesso não autorizado.' }, 401);
   const order = await env.DB.prepare('SELECT * FROM orders WHERE id=? LIMIT 1').bind(params.id).first(); if (!order) return json({ message: 'Pedido não encontrado.' }, 404);
@@ -10,8 +11,11 @@ export async function onRequestPatch({ request, env, params }) {
   let input; try { input = await request.json(); } catch { return json({ message: 'Dados inválidos.' }, 400); }
   const status = clean(input.status, 40); if (!allowedStatuses.has(status)) return json({ message: 'Status inválido.' }, 400);
   const syngulari = clean(input.syngulariProtocol, 120); const videoUrl = clean(input.videoUrl, 500); const issuance = clean(input.issuanceProtocol, 120); const notes = clean(input.notes, 3000);
+  const paymentStatus = clean(input.paymentStatus, 40); if (!allowedPaymentStatuses.has(paymentStatus)) return json({ message: 'Status de pagamento inválido.' }, 400);
+  const paymentAmountCents = Number(input.paymentAmountCents); if (!Number.isInteger(paymentAmountCents) || paymentAmountCents < 0) return json({ message: 'Informe um valor de pagamento válido.' }, 400);
+  const paymentNotes = clean(input.paymentNotes, 1000);
   if (videoUrl && !/^https:\/\//i.test(videoUrl)) return json({ message: 'O link da videoconferência deve começar com https://.' }, 400);
-  const updated = new Date().toISOString(); await env.DB.prepare('UPDATE orders SET status=?,syngulari_protocol=?,video_url=?,issuance_protocol=?,admin_notes=?,updated_at=? WHERE id=?').bind(status, syngulari, videoUrl, issuance, notes, updated, params.id).run();
+  const updated = new Date().toISOString(); const existing=await env.DB.prepare('SELECT payment_confirmed_at FROM orders WHERE id=?').bind(params.id).first(); const confirmedAt=paymentStatus==='confirmed'?(existing?.payment_confirmed_at||updated):null; await env.DB.prepare('UPDATE orders SET status=?,syngulari_protocol=?,video_url=?,issuance_protocol=?,admin_notes=?,payment_status=?,payment_amount_cents=?,payment_notes=?,payment_confirmed_at=?,updated_at=? WHERE id=?').bind(status, syngulari, videoUrl, issuance, notes, paymentStatus, paymentAmountCents, paymentNotes, confirmedAt, updated, params.id).run();
   const order = await env.DB.prepare('SELECT * FROM orders WHERE id=? LIMIT 1').bind(params.id).first(); if (!order) return json({ message: 'Pedido não encontrado.' }, 404);
   let notification = 'not_requested';
   if (input.notifyCustomer) {

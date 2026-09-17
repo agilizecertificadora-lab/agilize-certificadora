@@ -108,8 +108,11 @@ document.querySelector('#send-order').addEventListener('click',async()=>{
   try{
     const response=await fetch('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(reviewedPayload)});
     const result=await response.json(); if(!response.ok)throw new Error(result.message||'Não foi possível enviar o pedido.');
-    document.querySelector('#review').hidden=true; document.querySelector('#confirmation').hidden=false; document.querySelector('#protocol').textContent=result.protocol; document.querySelector('#confirmation h2').focus(); form.reset(); reviewedPayload=null;
+    document.querySelector('#review').hidden=true; document.querySelector('#confirmation').hidden=false; document.querySelector('#protocol').textContent=result.protocol; renderPayment(result.payment); document.querySelector('#confirmation h2').focus(); form.reset(); reviewedPayload=null;
   }catch(error){status.textContent=error.message||'Não foi possível enviar agora. Tente novamente.'; button.disabled=false;}
 });
 window.addEventListener('pageshow',event=>{if(event.persisted){form.reset();document.querySelector('#review-list').replaceChildren();document.querySelector('#review').hidden=true;document.querySelector('#confirmation').hidden=true;form.hidden=false;configure();showStep(0);}});
 
+
+function renderPayment(payment){const box=document.querySelector('#pix-payment');const consult=document.querySelector('#payment-consult');if(!payment){box.hidden=true;consult.hidden=false;return}consult.hidden=true;box.hidden=false;document.querySelector('#pix-amount').textContent=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(payment.amountCents/100);const field=document.querySelector('#pix-copy-paste');field.value=payment.copyPaste;const qr=document.querySelector('#pix-qrcode');qr.replaceChildren();new QRCode(qr,{text:payment.copyPaste,width:220,height:220,colorDark:'#031127',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
+document.querySelector('#copy-pix').addEventListener('click',async()=>{const field=document.querySelector('#pix-copy-paste');try{await navigator.clipboard.writeText(field.value)}catch{field.select();document.execCommand('copy')}const button=document.querySelector('#copy-pix');button.textContent='Código PIX copiado';setTimeout(()=>button.textContent='Copiar código PIX',2200)});
