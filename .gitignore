@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.write-check
+.sites-runtime/
+*.pdf
+docs/
+src/domain/
