@@ -2,6 +2,8 @@
 
 Site institucional da Agilize Certificadora, com catálogo de certificados digitais para pessoa física e jurídica, atendimento online e presencial e apresentação do Agilize Plus.
 
+Site publicado: https://agilizecertificadora.pages.dev
+
 ## Desenvolvimento local
 
 ```bash
