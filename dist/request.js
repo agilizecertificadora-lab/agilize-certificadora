@@ -71,7 +71,21 @@ configure();
 const digits = value=>value.replace(/\D/g,'');
 form.elements.cnpj.addEventListener('input',event=>{const n=digits(event.target.value).slice(0,14);event.target.value=n.replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2');});
 form.elements.cpf.addEventListener('input',event=>{const n=digits(event.target.value).slice(0,11);event.target.value=n.replace(/^(\d{3})(\d)/,'$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/,'$1.$2.$3').replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/,'$1.$2.$3-$4');});
-form.elements.zip.addEventListener('input',event=>{event.target.value=digits(event.target.value).slice(0,8).replace(/^(\d{5})(\d)/,'$1-$2');});
+let lastZip='',zipTimer;
+const zipStatus=document.createElement('small');zipStatus.className='cep-status';zipStatus.setAttribute('aria-live','polite');form.elements.zip.closest('label').append(zipStatus);
+form.elements.zip.addEventListener('input',event=>{const zip=digits(event.target.value).slice(0,8);event.target.value=zip.replace(/^(\d{5})(\d)/,'$1-$2');clearTimeout(zipTimer);if(zip.length===8)zipTimer=setTimeout(()=>lookupZip(zip),250);else{lastZip='';zipStatus.textContent=''}});
+form.elements.zip.addEventListener('blur',()=>{const zip=digits(form.elements.zip.value);if(zip.length===8)lookupZip(zip)});
+async function lookupZip(zip){
+  if(zip===lastZip)return;lastZip=zip;zipStatus.textContent='Consultando CEP…';
+  try{
+    const response=await fetch(`https://brasilapi.com.br/api/cep/v1/${zip}`);
+    if(!response.ok)throw new Error('not-found');
+    const address=await response.json();
+    form.elements.street.value=address.street||'';form.elements.district.value=address.neighborhood||'';form.elements.city.value=address.city||'';form.elements.state.value=address.state||'';
+    zipStatus.textContent='Endereço preenchido automaticamente.';
+    if(address.street)form.elements.number.focus();
+  }catch{lastZip='';zipStatus.textContent='CEP não encontrado. Preencha o endereço manualmente.'}
+}
 form.elements.phone.addEventListener('input',event=>{const n=digits(event.target.value).slice(0,11);event.target.value=n.length>10?n.replace(/^(\d{2})(\d{5})(\d*)$/,'($1) $2-$3'):n.replace(/^(\d{2})(\d{4})(\d*)$/,'($1) $2-$3');});
 form.elements.state.addEventListener('input',event=>{event.target.value=event.target.value.replace(/[^a-z]/gi,'').toUpperCase();});
 function validateStep(index){
