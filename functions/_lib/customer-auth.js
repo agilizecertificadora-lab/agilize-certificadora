@@ -1,0 +1,3 @@
+import { cookieValue, hash } from './admin-auth.js';
+export function customerCookie(token,maxAge=28800){return `agilize_customer=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`}
+export async function requireCustomer(request,env){if(!env.DB||!env.ADMIN_SESSION_SECRET)return null;const token=cookieValue(request,'agilize_customer');if(!token)return null;const tokenHash=await hash(token,env.ADMIN_SESSION_SECRET);return await env.DB.prepare('SELECT id,order_id,email,expires_at FROM customer_sessions WHERE token_hash=? AND expires_at>? LIMIT 1').bind(tokenHash,new Date().toISOString()).first()||null}

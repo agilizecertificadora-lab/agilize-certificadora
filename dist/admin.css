@@ -13,3 +13,5 @@
 .phase-legend{display:flex;gap:.65rem;flex-wrap:wrap;margin:0 0 1rem}.phase-legend span{display:inline-flex;align-items:center;gap:.45rem;font-size:.78rem;font-weight:800}.phase-legend span:before{content:"";width:.7rem;height:.7rem;border-radius:50%}.phase-legend .blue:before{background:#18bff0}.phase-legend .yellow:before{background:#f4c542}.phase-legend .green:before{background:#2bd67b}.phase-legend .red:before{background:#ff5d68}
 
 .payment-actions{display:flex;gap:.7rem;flex-wrap:wrap}.payment-admin textarea[readonly]{font:600 .75rem/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;word-break:break-all;background:rgba(255,255,255,.06)}
+
+.customer-proof{border:1px solid #275a78;border-radius:10px;background:#092541;padding:13px 15px;color:#a9bfd3}.customer-proof:empty{display:none}.customer-proof strong{color:#fff}.customer-proof a{display:inline-block;margin-left:10px;color:#45ddff;font-weight:800}
