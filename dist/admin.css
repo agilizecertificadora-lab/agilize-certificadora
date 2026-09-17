@@ -5,3 +5,4 @@
 .shield-logo{height:74px;border-radius:18px}.shield-logo.small{height:53px;border-radius:13px}
 
 .shield-logo{height:68px}.shield-logo.small{height:49px}
+.workflow-separator{margin-top:10px;padding-top:22px;border-top:1px solid var(--line)}.workflow-separator span{color:var(--cyan);font-size:11px;letter-spacing:.16em;font-weight:800}.workflow-separator h3{margin:7px 0 4px}.workflow-separator p{margin:0 0 6px;color:var(--muted);font-size:13px;font-weight:500}.pdf-field input[type=file]{padding:9px}.pdf-field input[type=file]::file-selector-button{border:0;border-radius:9px;padding:9px 12px;margin-right:12px;background:rgba(54,213,255,.15);color:var(--cyan);font-weight:800;cursor:pointer}.pdf-field span{font-size:12px;color:var(--muted)}.primary.issuance{background:linear-gradient(135deg,#7be7ff,#66a8ff)}
