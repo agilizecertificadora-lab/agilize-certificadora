@@ -13,6 +13,9 @@
   ],
   "vars": {
     "AGILIZE_NOTIFICATION_EMAIL": "agilizecertificadora@gmail.com",
-    "ADMIN_EMAIL": "agilizecertificadora@gmail.com"
+    "ADMIN_EMAIL": "agilizecertificadora@gmail.com",
+    "EMAIL_FROM": "Agilize Certificadora <acesso@agilizecertificados.com.br>"
   }
 }
+
+
