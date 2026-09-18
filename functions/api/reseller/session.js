@@ -1,0 +1,1 @@
+import { json } from '../../_lib/admin-auth.js';import { requireReseller } from '../../_lib/reseller-auth.js';export async function onRequestGet({request,env}){const user=await requireReseller(request,env);return user?json({user}):json({message:'Acesso não autorizado.'},401)}

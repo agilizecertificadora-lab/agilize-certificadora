@@ -1,0 +1,3 @@
+import { cookieValue, hash } from './admin-auth.js';
+export function resellerCookie(token,maxAge=28800){return `agilize_reseller=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`}
+export async function requireReseller(request,env){if(!env.DB||!env.ADMIN_SESSION_SECRET)return null;const token=cookieValue(request,'agilize_reseller');if(!token)return null;const tokenHash=await hash(token,env.ADMIN_SESSION_SECRET);return await env.DB.prepare("SELECT s.id,s.email,s.reseller_id,r.name,r.accounting_name FROM reseller_sessions s JOIN resellers r ON r.id=s.reseller_id WHERE s.token_hash=? AND s.expires_at>? AND r.status='approved' LIMIT 1").bind(tokenHash,new Date().toISOString()).first()||null}

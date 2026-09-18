@@ -1,0 +1,1 @@
+import { json } from '../../../_lib/admin-auth.js';import { resellerCookie } from '../../../_lib/reseller-auth.js';export async function onRequestPost(){return json({ok:true},200,{'Set-Cookie':resellerCookie('',0)})}
