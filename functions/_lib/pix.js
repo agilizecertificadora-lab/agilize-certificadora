@@ -8,4 +8,4 @@ export function pixPayload({key,name,city,amountCents,txid,description}){
   const base=field('00','01')+field('26',merchant)+field('52','0000')+field('53','986')+field('54',amount)+field('58','BR')+field('59',ascii(name,25))+field('60',ascii(city,15))+field('62',field('05',transaction))+'6304';
   return base+crc16(base);
 }
-export const paymentTxid=protocol=>ascii(String(protocol).replace(/^AGZ-/i,''),25)||crypto.randomUUID().replaceAll('-','').slice(0,25).toUpperCase();
+export const paymentTxid=protocol=>String(protocol||'').replace(/^AGZ-/i,'').replace(/[^A-Za-z0-9]/g,'').slice(0,25).toUpperCase()||crypto.randomUUID().replaceAll('-','').slice(0,25).toUpperCase();
