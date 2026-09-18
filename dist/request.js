@@ -61,13 +61,30 @@ async function loadAvailability(){
 }
 form.elements.date.addEventListener('change',loadAvailability);
 form.elements.mode.addEventListener('change',loadAvailability);
-const product = new URLSearchParams(location.search).get('produto');
+const requestParams = new URLSearchParams(location.search);
+const product = requestParams.get('produto');
+const renewalToken = requestParams.get('renovacao');
 const chosen=AGILIZE_CATALOG.find(item=>item.id===product && item.person!=='syn' && item.publishable!==false);
 if(chosen)person.value=chosen.person;
 if(product==='e-CNPJ A1') person.value='pj';
 populateProducts(chosen?.id);
 if(product==='Certificado A3')certificate.value=AGILIZE_CATALOG.find(item=>item.person===person.value&&item.type==='A3').id;
 configure();
+async function loadRenewalInvite(){
+  if(!renewalToken)return;
+  try{
+    const response=await fetch(`/api/renewal/${encodeURIComponent(renewalToken)}`);
+    const result=await response.json();if(!response.ok)throw new Error(result.message||'Convite não encontrado.');
+    const renewal=result.renewal;const matched=AGILIZE_CATALOG.find(item=>item.publishable!==false&&(item.name===renewal.product||item.title===renewal.product));
+    if(matched){person.value=matched.person;populateProducts(matched.id);certificate.value=matched.id;configure()}
+    form.elements.purpose.value='Renovação';
+    if(matched?.person==='pj')form.elements.company.value=renewal.name||'';else form.elements.holder.value=renewal.name||'';
+    form.elements.email.value=/^x+@/i.test(renewal.email||'')?'':(renewal.email||'');
+    const phoneDigits=digits(renewal.phone||'').slice(-11);if(phoneDigits)form.elements.phone.value=phoneDigits.length>10?phoneDigits.replace(/^(\d{2})(\d{5})(\d{4})$/,'($1) $2-$3'):phoneDigits.replace(/^(\d{2})(\d{4})(\d{4})$/,'($1) $2-$3');
+    document.querySelector('.demo-notice').textContent='Renovação identificada. Confira seus dados, escolha o horário e conclua a solicitação.';
+  }catch(error){document.querySelector('.demo-notice').textContent=error.message+' Você ainda pode preencher a solicitação normalmente.'}
+}
+loadRenewalInvite();
 const digits = value=>value.replace(/\D/g,'');
 form.elements.cnpj.addEventListener('input',event=>{const n=digits(event.target.value).slice(0,14);event.target.value=n.replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2');});
 form.elements.cpf.addEventListener('input',event=>{const n=digits(event.target.value).slice(0,11);event.target.value=n.replace(/^(\d{3})(\d)/,'$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/,'$1.$2.$3').replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/,'$1.$2.$3-$4');});
@@ -105,6 +122,7 @@ form.addEventListener('submit',event=>{
   const data=new FormData(form);
   reviewedPayload=Object.fromEntries(data.entries());
   reviewedPayload.product={id:selectedProduct().id,title:selectedProduct().title,priceCents:selectedProduct().priceCents,validity:selectedProduct().validity,plusIncluded:selectedProduct().plusIncluded};
+  if(renewalToken)reviewedPayload.renewalToken=renewalToken;
   const list=document.querySelector('#review-list');list.replaceChildren();
   const add=(label,value)=>{const row=document.createElement('div');const term=document.createElement('dt');const desc=document.createElement('dd');term.textContent=label;desc.textContent=value;row.append(term,desc);list.append(row);};
   add('Certificado',document.querySelector('#summary-product').textContent);

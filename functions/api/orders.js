@@ -22,6 +22,7 @@ export async function onRequestPost({request,env}){
   if(digits(input.phone).length<10)return Response.json({message:'Informe um WhatsApp válido.'},{status:400});
   if(input.person==='pj'&&digits(input.cnpj).length!==14)return Response.json({message:'Informe um CNPJ válido.'},{status:400});
   const product=catalogProduct(clean(input.certificate,40)); if(!product||product.person!==clean(input.person,2))return Response.json({message:'Certificado inválido.'},{status:400});
+  const renewalToken=clean(input.renewalToken,80);let renewal=null;if(renewalToken)renewal=await env.DB.prepare("SELECT id FROM renewal_customers WHERE renewal_token=? AND status NOT IN ('renewed','no_interest') LIMIT 1").bind(renewalToken).first();
   const id=crypto.randomUUID(); const code=protocol(); const created=new Date().toISOString();
   const order={id,protocol:code,status:'pending_confirmation',person:clean(input.person,2),certificate_id:clean(input.certificate,40),product_title:product.title,price_cents:product.priceCents,purpose:clean(input.purpose),holder:clean(input.holder),cpf:digits(input.cpf),birth:clean(input.birth,10),email:clean(input.email),phone:clean(input.phone,20),cnpj:digits(input.cnpj),company:clean(input.company),trade_name:clean(input.tradeName),address_json:JSON.stringify({zip:clean(input.zip,9),street:clean(input.street),number:clean(input.number,20),extra:clean(input.extra,100),district:clean(input.district,100),city:clean(input.city,100),state:clean(input.state,2)}),mode:clean(input.mode,60),appointment_date:clean(input.date,10),appointment_time:clean(input.time,5),created_at:created};
   try{
@@ -41,6 +42,8 @@ export async function onRequestPost({request,env}){
     }
   }
   const emailStatus=await notify(env,order);
-  await env.DB.prepare('UPDATE orders SET email_status=? WHERE id=?').bind(emailStatus,id).run();
+  const updates=[env.DB.prepare('UPDATE orders SET email_status=? WHERE id=?').bind(emailStatus,id)];
+  if(renewal)updates.push(env.DB.prepare("UPDATE renewal_customers SET status='scheduled',order_protocol=?,updated_at=? WHERE id=?").bind(code,new Date().toISOString(),renewal.id));
+  await env.DB.batch(updates);
   return Response.json({protocol:code,status:'pending_confirmation',payment},{status:201});
 }
