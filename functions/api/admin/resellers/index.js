@@ -14,6 +14,21 @@ export async function onRequestPatch({request,env}){
   if(status==='approved')await env.DB.prepare("INSERT OR IGNORE INTO reseller_custom_prices(reseller_id,product_id,price_cents,active,updated_at,updated_by) SELECT ?,product_id,price_cents,active,?,? FROM reseller_prices").bind(id,new Date().toISOString(),admin.email).run();
   return json({ok:true});
 }
+export async function onRequestDelete({request,env}){
+  if(!await requireAdmin(request,env))return json({message:'Acesso não autorizado.'},401);
+  let input;try{input=await request.json()}catch{return json({message:'Dados inválidos.'},400)}
+  const id=clean(input.id,60);if(!id)return json({message:'Parceiro não informado.'},400);
+  const reseller=await env.DB.prepare("SELECT id,email,status FROM resellers WHERE id=? LIMIT 1").bind(id).first();
+  if(!reseller)return json({message:'Parceiro não encontrado.'},404);
+  if(reseller.status!=='rejected')return json({message:'Somente parceiros recusados podem ser excluídos.'},409);
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM reseller_sessions WHERE reseller_id=?').bind(id),
+    env.DB.prepare('DELETE FROM reseller_custom_prices WHERE reseller_id=?').bind(id),
+    env.DB.prepare('DELETE FROM reseller_login_codes WHERE email=?').bind(reseller.email),
+    env.DB.prepare("DELETE FROM resellers WHERE id=? AND status='rejected'").bind(id)
+  ]);
+  return json({ok:true});
+}
 export async function onRequestPut({request,env}){
   const admin=await requireAdmin(request,env);if(!admin)return json({message:'Acesso não autorizado.'},401);
   let input;try{input=await request.json()}catch{return json({message:'Dados inválidos.'},400)}
