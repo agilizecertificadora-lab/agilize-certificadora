@@ -6,6 +6,12 @@ export async function onRequestGet({ request, env }) {
   if (!showAll && !query) sql += ` AND datetime(created_at) >= datetime('now','-30 days')`;
   if (query) { sql += ` AND (protocol LIKE ? OR holder LIKE ? OR email LIKE ? OR phone LIKE ? OR cpf LIKE ? OR cnpj LIKE ?)`; const like = `%${query}%`; values.push(like, like, like, like, like, like); }
   if (status) { sql += ' AND status=?'; values.push(status); }
-  sql += ' ORDER BY appointment_date DESC, appointment_time DESC, created_at DESC LIMIT 1000';
+  sql += ` ORDER BY CASE
+    WHEN status IN ('pending_confirmation','confirmed','awaiting_documents','scheduled') THEN 0
+    WHEN status='issuance_sent' THEN 1
+    WHEN status='completed' THEN 2
+    WHEN status IN ('cancelled','rejected') THEN 3
+    ELSE 4 END,
+    appointment_date DESC, appointment_time DESC, created_at DESC LIMIT 1000`;
   const result = await env.DB.prepare(sql).bind(...values).all(); return json({ orders: result.results || [] });
 }
