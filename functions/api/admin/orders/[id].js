@@ -2,6 +2,8 @@ import { clean, json, requireAdmin } from '../../../_lib/admin-auth.js';
 import { pixPayload, paymentTxid } from '../../../_lib/pix.js';
 const allowedStatuses = new Set(['pending_confirmation','confirmed','awaiting_documents','scheduled','issuance_sent','completed','cancelled','rejected']);
 const allowedPaymentStatuses = new Set(['pending','reported','confirmed','not_found','cancelled','refunded']);
+const scheduleSlots=(start,end)=>{const values=[];for(let minutes=start*60;minutes<=end*60;minutes+=30)values.push(`${String(Math.floor(minutes/60)).padStart(2,'0')}:${String(minutes%60).padStart(2,'0')}`);return values};
+const saoPauloNow=()=>{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).filter(part=>part.type!=='literal').map(part=>[part.type,part.value]));return {date:`${parts.year}-${parts.month}-${parts.day}`,minutes:Number(parts.hour)*60+Number(parts.minute)}};
 export async function onRequestGet({ request, env, params }) {
   if (!await requireAdmin(request, env)) return json({ message: 'Acesso não autorizado.' }, 401);
   const order = await env.DB.prepare('SELECT * FROM orders WHERE id=? LIMIT 1').bind(params.id).first(); if (!order) return json({ message: 'Pedido não encontrado.' }, 404);
@@ -20,7 +22,21 @@ export async function onRequestPatch({ request, env, params }) {
   const paymentNotes = clean(input.paymentNotes, 1000);
   if (status === 'completed' && (paymentStatus !== 'confirmed' || !issuance)) return json({ message: 'Para finalizar, confirme o pagamento e informe o protocolo de emissão.' }, 400);
   if (videoUrl && !/^https:\/\//i.test(videoUrl)) return json({ message: 'O link da videoconferência deve começar com https://.' }, 400);
-  const updated = new Date().toISOString(); const existing=await env.DB.prepare('SELECT payment_confirmed_at FROM orders WHERE id=?').bind(params.id).first(); const confirmedAt=paymentStatus==='confirmed'?(existing?.payment_confirmed_at||updated):null; await env.DB.prepare('UPDATE orders SET status=?,syngulari_protocol=?,video_url=?,issuance_protocol=?,admin_notes=?,payment_status=?,payment_amount_cents=?,payment_notes=?,payment_confirmed_at=?,updated_at=? WHERE id=?').bind(status, syngulari, videoUrl, issuance, notes, paymentStatus, paymentAmountCents, paymentNotes, confirmedAt, updated, params.id).run();
+  const updated = new Date().toISOString(); const existing=await env.DB.prepare('SELECT payment_confirmed_at,mode,appointment_date,appointment_time FROM orders WHERE id=?').bind(params.id).first();
+  if(!existing)return json({message:'Pedido não encontrado.'},404);
+  const appointmentDate=clean(input.appointmentDate,10)||existing.appointment_date,appointmentTime=clean(input.appointmentTime,5)||existing.appointment_time;
+  const scheduleChanged=appointmentDate!==existing.appointment_date||appointmentTime!==existing.appointment_time;
+  if(scheduleChanged){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(appointmentDate))return json({message:'Informe uma data válida para o atendimento.'},400);
+    const now=saoPauloNow();if(appointmentDate<now.date)return json({message:'Escolha uma data de atendimento atual ou futura.'},400);
+    const isPresential=String(existing.mode||'').startsWith('Presencial'),validSlots=new Set(scheduleSlots(9,isPresential?17:21));
+    if(!validSlots.has(appointmentTime))return json({message:'Escolha um horário válido em intervalos de 30 minutos.'},400);
+    const weekday=new Date(`${appointmentDate}T12:00:00-03:00`).getDay();if(isPresential&&(weekday===0||weekday===6))return json({message:'O atendimento presencial não está disponível aos finais de semana.'},400);
+    const [hour,minute]=appointmentTime.split(':').map(Number);if(appointmentDate===now.date&&hour*60+minute<=now.minutes)return json({message:'Escolha um horário que ainda não tenha passado.'},400);
+    const occupied=await env.DB.prepare("SELECT id FROM orders WHERE appointment_date=? AND appointment_time=? AND mode=? AND id<>? AND status NOT IN ('cancelled','rejected') LIMIT 1").bind(appointmentDate,appointmentTime,existing.mode,params.id).first();if(occupied)return json({message:'Esse horário acabou de ser ocupado. Escolha outro horário.'},409);
+  }
+  const confirmedAt=paymentStatus==='confirmed'?(existing.payment_confirmed_at||updated):null;
+  try{await env.DB.prepare('UPDATE orders SET appointment_date=?,appointment_time=?,status=?,syngulari_protocol=?,video_url=?,issuance_protocol=?,admin_notes=?,payment_status=?,payment_amount_cents=?,payment_notes=?,payment_confirmed_at=?,updated_at=? WHERE id=?').bind(appointmentDate,appointmentTime,status,syngulari,videoUrl,issuance,notes,paymentStatus,paymentAmountCents,paymentNotes,confirmedAt,updated,params.id).run()}catch(error){if(String(error).includes('UNIQUE'))return json({message:'Esse horário acabou de ser ocupado. Escolha outro horário.'},409);throw error}
   const order = await env.DB.prepare('SELECT * FROM orders WHERE id=? LIMIT 1').bind(params.id).first(); if (!order) return json({ message: 'Pedido não encontrado.' }, 404);
   let notification = 'not_requested';
   if (input.notifyCustomer) {
