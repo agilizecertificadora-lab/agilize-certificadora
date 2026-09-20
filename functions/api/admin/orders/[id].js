@@ -16,7 +16,7 @@ export async function onRequestPatch({ request, env, params }) {
   if (!await requireAdmin(request, env)) return json({ message: 'Acesso não autorizado.' }, 401);
   let input; try { input = await request.json(); } catch { return json({ message: 'Dados inválidos.' }, 400); }
   const status = clean(input.status, 40); if (!allowedStatuses.has(status)) return json({ message: 'Status inválido.' }, 400);
-  const syngulari = clean(input.syngulariProtocol, 120); const videoUrl = clean(input.videoUrl, 500); const issuance = clean(input.issuanceProtocol, 120); const notes = clean(input.notes, 3000);
+  const syngulari = clean(input.syngulariProtocol, 120); const videoUrl = clean(input.videoUrl, 500); const issuance = syngulari || clean(input.issuanceProtocol, 120); const notes = clean(input.notes, 3000);
   const paymentStatus = clean(input.paymentStatus, 40); if (!allowedPaymentStatuses.has(paymentStatus)) return json({ message: 'Status de pagamento inválido.' }, 400);
   const paymentAmountCents = Number(input.paymentAmountCents); if (!Number.isInteger(paymentAmountCents) || paymentAmountCents < 0) return json({ message: 'Informe um valor de pagamento válido.' }, 400);
   const paymentNotes = clean(input.paymentNotes, 1000);
