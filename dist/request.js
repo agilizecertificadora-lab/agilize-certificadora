@@ -93,7 +93,7 @@ form.elements.cnpj.addEventListener('blur',()=>{const cnpj=digits(form.elements.
 async function lookupCnpj(cnpj){
   if(cnpj===lastCnpj)return;lastCnpj=cnpj;cnpjStatus.textContent='Consultando CNPJ…';
   try{
-    const response=await fetch(`/api/cnpj?cnpj=${encodeURIComponent(cnpj)}`);const company=await response.json();
+    const response=await fetch(`/api/cnpj?cnpj=${encodeURIComponent(cnpj)}`);const raw=await response.text();let company;try{company=JSON.parse(raw)}catch{throw new Error('A consulta de CNPJ está temporariamente indisponível.')}
     if(!response.ok)throw new Error(company.message||'CNPJ não encontrado.');
     form.elements.company.value=company.company||'';form.elements.tradeName.value=company.tradeName||'';
     cnpjStatus.textContent=company.status?`Empresa preenchida automaticamente · Situação: ${company.status}.`:'Empresa preenchida automaticamente.';
