@@ -86,7 +86,19 @@ async function loadRenewalInvite(){
 }
 loadRenewalInvite();
 const digits = value=>value.replace(/\D/g,'');
-form.elements.cnpj.addEventListener('input',event=>{const n=digits(event.target.value).slice(0,14);event.target.value=n.replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2');});
+let lastCnpj='',cnpjTimer;
+const cnpjStatus=document.createElement('small');cnpjStatus.className='cep-status';cnpjStatus.setAttribute('aria-live','polite');form.elements.cnpj.closest('label').append(cnpjStatus);
+form.elements.cnpj.addEventListener('input',event=>{const n=digits(event.target.value).slice(0,14);event.target.value=n.replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2');clearTimeout(cnpjTimer);if(n.length===14)cnpjTimer=setTimeout(()=>lookupCnpj(n),350);else{lastCnpj='';cnpjStatus.textContent=''}});
+form.elements.cnpj.addEventListener('blur',()=>{const cnpj=digits(form.elements.cnpj.value);if(cnpj.length===14)lookupCnpj(cnpj)});
+async function lookupCnpj(cnpj){
+  if(cnpj===lastCnpj)return;lastCnpj=cnpj;cnpjStatus.textContent='Consultando CNPJ…';
+  try{
+    const response=await fetch(`/api/cnpj?cnpj=${encodeURIComponent(cnpj)}`);const company=await response.json();
+    if(!response.ok)throw new Error(company.message||'CNPJ não encontrado.');
+    form.elements.company.value=company.company||'';form.elements.tradeName.value=company.tradeName||'';
+    cnpjStatus.textContent=company.status?`Empresa preenchida automaticamente · Situação: ${company.status}.`:'Empresa preenchida automaticamente.';
+  }catch(error){lastCnpj='';cnpjStatus.textContent=`${error.message} Preencha os dados manualmente.`}
+}
 form.elements.cpf.addEventListener('input',event=>{const n=digits(event.target.value).slice(0,11);event.target.value=n.replace(/^(\d{3})(\d)/,'$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/,'$1.$2.$3').replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/,'$1.$2.$3-$4');});
 let lastZip='',zipTimer;
 const zipStatus=document.createElement('small');zipStatus.className='cep-status';zipStatus.setAttribute('aria-live','polite');form.elements.zip.closest('label').append(zipStatus);
