@@ -1,2 +1,2 @@
-import { cookieValue, hash, json, sessionCookie } from '../../../_lib/admin-auth.js';
-export async function onRequestPost({ request, env }) { const token = cookieValue(request, 'agilize_admin'); if (token && env.DB && env.ADMIN_SESSION_SECRET) await env.DB.prepare('DELETE FROM admin_sessions WHERE token_hash=?').bind(await hash(token, env.ADMIN_SESSION_SECRET)).run(); return json({ ok: true }, 200, { 'Set-Cookie': sessionCookie('', 0) }); }
+import { cookieValues, hash, json, sessionCookie } from '../../../_lib/admin-auth.js';
+export async function onRequestPost({ request, env }) { const tokens=cookieValues(request,'agilize_admin').filter(Boolean);if(tokens.length&&env.DB&&env.ADMIN_SESSION_SECRET){for(const token of tokens)await env.DB.prepare('DELETE FROM admin_sessions WHERE token_hash=?').bind(await hash(token,env.ADMIN_SESSION_SECRET)).run()}return json({ok:true},200,{'Set-Cookie':sessionCookie('',0,request)}); }

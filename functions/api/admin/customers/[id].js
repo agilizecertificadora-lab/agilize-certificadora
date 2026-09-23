@@ -8,3 +8,9 @@ export async function onRequestPatch({request,env,params}){
   try{await env.DB.prepare(`UPDATE customer_profiles SET document=?,person=?,holder=?,cpf=?,birth=?,email=?,phone=?,cnpj=?,company=?,trade_name=?,address_json=?,city=?,notes=?,source='manual',updated_at=? WHERE id=?`).bind(document,person,clean(input.holder,180),cpf,clean(input.birth,10),clean(input.email,180).toLowerCase(),clean(input.phone,30),cnpj,clean(input.company,180),clean(input.tradeName,180),address,clean(input.address?.city,120),clean(input.notes,2000),now,params.id).run()}catch{return json({message:'Já existe outro cliente com este CPF/CNPJ.'},409)}
   return json({ok:true});
 }
+export async function onRequestDelete({request,env,params}){
+  if(!await requireAdmin(request,env))return json({message:'Acesso não autorizado.'},401);
+  const result=await env.DB.prepare('DELETE FROM customer_profiles WHERE id=?').bind(params.id).run();
+  if(!result.meta?.changes)return json({message:'Cliente não encontrado.'},404);
+  return json({ok:true});
+}

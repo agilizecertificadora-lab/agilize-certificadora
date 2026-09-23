@@ -10,5 +10,5 @@ export async function onRequestPost({ request, env }) {
   const token = `${crypto.randomUUID()}${crypto.randomUUID()}`; const tokenHash = await hash(token, env.ADMIN_SESSION_SECRET); const now = new Date(); const expires = new Date(now.getTime() + 28800000);
   await env.DB.prepare('DELETE FROM admin_sessions WHERE expires_at<=?').bind(now.toISOString()).run();
   await env.DB.prepare('INSERT INTO admin_sessions (id,email,token_hash,expires_at,created_at) VALUES (?,?,?,?,?)').bind(crypto.randomUUID(), email, tokenHash, expires.toISOString(), now.toISOString()).run();
-  return json({ ok: true }, 200, { 'Set-Cookie': sessionCookie(token) });
+  return json({ ok: true }, 200, { 'Set-Cookie': sessionCookie(token,28800,request) });
 }
