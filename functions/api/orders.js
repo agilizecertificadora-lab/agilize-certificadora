@@ -21,7 +21,10 @@ export async function onRequestPost({request,env}){
   if(digits(input.cpf).length!==11)return Response.json({message:'Informe um CPF válido.'},{status:400});
   if(digits(input.phone).length<10)return Response.json({message:'Informe um WhatsApp válido.'},{status:400});
   if(input.person==='pj'&&digits(input.cnpj).length!==14)return Response.json({message:'Informe um CNPJ válido.'},{status:400});
-  const product=catalogProduct(clean(input.certificate,40)); if(!product||product.person!==clean(input.person,2))return Response.json({message:'Certificado inválido.'},{status:400});
+  const catalogEntry=catalogProduct(clean(input.certificate,40));
+  const storedProduct=await env.DB.prepare('SELECT product_id,title,person,sale_price_cents,active FROM partner_products WHERE product_id=? LIMIT 1').bind(clean(input.certificate,40)).first();
+  if(!catalogEntry||!storedProduct||storedProduct.active!==1||storedProduct.person!==clean(input.person,2)||!Number.isInteger(storedProduct.sale_price_cents))return Response.json({message:'Certificado inválido ou indisponível.'},{status:400});
+  const product={...catalogEntry,title:storedProduct.title,priceCents:storedProduct.sale_price_cents};
   const renewalToken=clean(input.renewalToken,80);let renewal=null;if(renewalToken)renewal=await env.DB.prepare("SELECT id FROM renewal_customers WHERE renewal_token=? AND status NOT IN ('renewed','no_interest') LIMIT 1").bind(renewalToken).first();
   const id=crypto.randomUUID(); const code=protocol(); const created=new Date().toISOString();
   const order={id,protocol:code,status:'pending_confirmation',person:clean(input.person,2),certificate_id:clean(input.certificate,40),product_title:product.title,price_cents:product.priceCents,purpose:clean(input.purpose),holder:clean(input.holder),cpf:digits(input.cpf),birth:clean(input.birth,10),email:clean(input.email),phone:clean(input.phone,20),cnpj:digits(input.cnpj),company:clean(input.company),trade_name:clean(input.tradeName),address_json:JSON.stringify({zip:clean(input.zip,9),street:clean(input.street),number:clean(input.number,20),extra:clean(input.extra,100),district:clean(input.district,100),city:clean(input.city,100),state:clean(input.state,2)}),mode:clean(input.mode,60),appointment_date:clean(input.date,10),appointment_time:clean(input.time,5),created_at:created};

@@ -8,6 +8,13 @@ form.elements.date.min = localDate;
 form.elements.birth.max = localDate;
 let current = 0;
 let reviewedPayload = null;
+async function refreshCatalog(){
+  try{
+    const response=await fetch('/api/products',{cache:'no-store'});if(!response.ok)throw new Error('catalog');
+    const result=await response.json();const values=new Map((result.products||[]).map(row=>[row.product_id,row]));
+    AGILIZE_CATALOG.forEach(item=>{const row=values.get(item.id);if(!row)return;item.title=row.title||item.title;item.priceCents=row.sale_price_cents;item.publishable=row.active===1&&Number.isInteger(row.sale_price_cents)});
+  }catch{ /* Mantém o catálogo incorporado como contingência. */ }
+}
 function selectedProduct(){ return AGILIZE_CATALOG.find(item=>item.id===certificate.value); }
 function populateProducts(preferred){
  const items=AGILIZE_CATALOG.filter(item=>item.person===person.value && item.publishable!==false);
@@ -64,13 +71,17 @@ form.elements.mode.addEventListener('change',loadAvailability);
 const requestParams = new URLSearchParams(location.search);
 const product = requestParams.get('produto');
 const renewalToken = requestParams.get('renovacao');
-const chosen=AGILIZE_CATALOG.find(item=>item.id===product && item.person!=='syn' && item.publishable!==false);
-if(chosen)person.value=chosen.person;
-if(product==='e-CNPJ A1') person.value='pj';
-populateProducts(chosen?.id);
-if(product==='Certificado A3')certificate.value=AGILIZE_CATALOG.find(item=>item.person===person.value&&item.type==='A3').id;
-configure();
+let chosen=null;
+const catalogReady=refreshCatalog().then(()=>{
+  chosen=AGILIZE_CATALOG.find(item=>item.id===product && item.person!=='syn' && item.publishable!==false);
+  if(chosen)person.value=chosen.person;
+  if(product==='e-CNPJ A1')person.value='pj';
+  populateProducts(chosen?.id);
+  if(product==='Certificado A3'){const firstA3=AGILIZE_CATALOG.find(item=>item.person===person.value&&item.type==='A3'&&item.publishable!==false);if(firstA3)certificate.value=firstA3.id}
+  configure();
+});
 async function loadRenewalInvite(){
+  await catalogReady;
   if(!renewalToken)return;
   try{
     const response=await fetch(`/api/renewal/${encodeURIComponent(renewalToken)}`);

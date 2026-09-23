@@ -1,3 +1,9 @@
+(async()=>{
+try{
+  const response=await fetch('/api/products',{cache:'no-store'});if(!response.ok)throw new Error('catalog');
+  const result=await response.json();const values=new Map((result.products||[]).map(row=>[row.product_id,row]));
+  AGILIZE_CATALOG.forEach(item=>{const row=values.get(item.id);if(!row)return;item.title=row.title||item.title;item.priceCents=row.sale_price_cents;item.publishable=row.active===1&&Number.isInteger(row.sale_price_cents)});
+}catch{ /* Mantém o catálogo incorporado como contingência. */ }
 const catalogCards = document.querySelector('#catalog-cards');
 const publicCatalog = AGILIZE_CATALOG.filter(item => item.publishable !== false);
 const groups = [{person:'pf',type:'A1',title:'e-CPF A1'},{person:'pj',type:'A1',title:'e-CNPJ A1'},{person:'pf',type:'A3',title:'e-CPF A3'},{person:'pj',type:'A3',title:'e-CNPJ A3'}];
@@ -27,3 +33,4 @@ groups.forEach(group => {
   };
   select.addEventListener('change', update); bottom.append(priceWrap, link); card.append(top, title, label, tags, note, features, bottom); catalogCards.append(card); update();
 });
+})();
