@@ -1,4 +1,5 @@
 import { clean, json, requireAdmin } from '../../../_lib/admin-auth.js';
+import { upsertCustomer } from '../../../_lib/customers.js';
 
 const allowedStatuses = new Set(['review','ready','contacted','waiting','scheduled','renewed','no_interest']);
 
@@ -20,6 +21,7 @@ export async function onRequestPatch({ request, env, params }) {
     clean(input.product ?? existing.product, 40), clean(input.expiresAt ?? existing.expires_at, 30), checked,
     checked && status === 'review' ? 'ready' : status, clean(input.nextFollowUpAt ?? existing.next_follow_up_at, 30), clean(input.notes ?? existing.notes, 2000), now, params.id
   ).run();
+  await upsertCustomer(env,{document:clean(input.document ?? existing.document,30),name,phone,email,city:clean(input.city ?? existing.city,120),notes:clean(input.notes ?? existing.notes,2000)},{source:'renewal'});
   return json({ ok: true });
 }
 

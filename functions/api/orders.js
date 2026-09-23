@@ -1,5 +1,6 @@
 import { pixPayload, paymentTxid } from '../_lib/pix.js';
 import { catalogProduct } from '../_lib/catalog.js';
+import { upsertCustomer } from '../_lib/customers.js';
 const required=['person','certificate','purpose','holder','cpf','birth','email','phone','mode','date','time'];
 const clean=(value,max=180)=>String(value??'').trim().slice(0,max);
 const digits=value=>clean(value).replace(/\D/g,'');
@@ -34,6 +35,7 @@ export async function onRequestPost({request,env}){
     if(String(error).includes('UNIQUE'))return Response.json({message:'Esse horário acabou de ser solicitado. Escolha outro horário.'},{status:409});
     return Response.json({message:'Não foi possível registrar o pedido.'},{status:500});
   }
+  await upsertCustomer(env,order,{source:'order',protocol:code});
   let payment=null;
   if(Number.isInteger(order.price_cents)){
     const settings=await env.DB.prepare('SELECT pix_key,merchant_name,merchant_city FROM payment_settings WHERE id=?').bind('default').first();

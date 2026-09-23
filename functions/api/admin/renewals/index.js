@@ -30,6 +30,7 @@ export async function onRequestPost({ request, env }) {
   const sourceFile = clean(input.sourceFile, 180);
   const now = new Date().toISOString();
   const statements = [];
+  const profileStatements = [];
   let rejected = 0;
   for (const row of rows) {
     const name = clean(row.name, 180), product = clean(row.product, 40), expiresAt = clean(row.expiresAt, 30);
@@ -41,9 +42,17 @@ export async function onRequestPost({ request, env }) {
       crypto.randomUUID(), batchId, sourceFile, name, clean(row.document, 30), clean(row.city, 120), clean(row.phone, 30), email,
       product, expiresAt, clean(row.referral, 120), 0, 'review', crypto.randomUUID(), now, now
     ));
+    const document=String(row.document||'').replace(/\D/g,'');
+    if(document.length===11||document.length===14)profileStatements.push(env.DB.prepare(`INSERT INTO customer_profiles
+      (id,document,person,holder,cpf,birth,email,phone,cnpj,company,trade_name,address_json,city,notes,source,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      ON CONFLICT(document) DO UPDATE SET holder=CASE WHEN excluded.holder<>'' THEN excluded.holder ELSE customer_profiles.holder END,email=CASE WHEN excluded.email<>'' THEN excluded.email ELSE customer_profiles.email END,phone=CASE WHEN excluded.phone<>'' THEN excluded.phone ELSE customer_profiles.phone END,city=CASE WHEN excluded.city<>'' THEN excluded.city ELSE customer_profiles.city END,updated_at=excluded.updated_at`).bind(
+      crypto.randomUUID(),document,document.length===14?'pj':'pf',name,document.length===11?document:'','',email,clean(row.phone,30),document.length===14?document:'',document.length===14?name:'','','{}',clean(row.city,120),'Importado da lista de renovações','renewal',now,now
+    ));
   }
   if (!statements.length) return json({ message: 'Nenhuma linha válida foi encontrada.' }, 400);
   const results = await env.DB.batch(statements);
+  for(let index=0;index<profileStatements.length;index+=50)await env.DB.batch(profileStatements.slice(index,index+50));
   const imported = results.reduce((total, item) => total + Number(item.meta?.changes || 0), 0);
   return json({ ok: true, imported, skipped: statements.length - imported, rejected, message: `${imported} cliente(s) importado(s). ${statements.length - imported} duplicado(s) ignorado(s).` }, 201);
 }
